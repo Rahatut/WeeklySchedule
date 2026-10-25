@@ -1,0 +1,393 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<meta name="theme-color" content="#1a1917" id="themeColorMeta">
+<meta name="description" content="Offline interactive 7th-semester IUT CSE timetable with elective selection, theory/lab/thesis cards, break, credits, teachers and rooms.">
+<title>IUT CSE · Semester 7 | Cozy Class Routine</title>
+<script>try{document.documentElement.dataset.theme=localStorage.getItem("iut-cse7-theme-v4")==="light"?"light":"dark"}catch(e){document.documentElement.dataset.theme="dark"}</script>
+<style>
+/* IUT CSE · Semester 7 — minimal */
+:root{
+  color-scheme:dark;
+  --bg:#1a1917;--text:#ece6da;--muted:#968c7f;--faint:#6f665b;--line:#2c2925;--hover:#24211e;
+  --accent:#e7c19a;--theory:#a9bf97;--lab:#8fc1bd;--thesis:#dcae8b;--overlay:#0d0c0acc;
+}
+:root[data-theme="light"]{
+  color-scheme:light;
+  --bg:#faf7f2;--text:#2b2620;--muted:#85796b;--faint:#a89c8d;--line:#e8e1d6;--hover:#f1ece3;
+  --accent:#76503b;--theory:#4a6d4c;--lab:#2f6b6d;--thesis:#9a5a40;--overlay:#2f241866;
+}
+*{box-sizing:border-box}html,body{margin:0;height:100%;overscroll-behavior:none}
+body{font-family:ui-sans-serif,system-ui,-apple-system,"Segoe UI",Roboto,sans-serif;background:var(--bg);color:var(--text);-webkit-font-smoothing:antialiased}
+button,select{font:inherit;color:inherit}button{cursor:pointer;background:none;border:0;padding:0}a{color:var(--accent);text-underline-offset:3px}
+:focus-visible{outline:2px solid var(--accent);outline-offset:2px}
+.app{height:100vh;height:100dvh;max-width:520px;margin:0 auto;display:flex;flex-direction:column;min-height:0;padding:calc(env(safe-area-inset-top) + 14px) max(18px,env(safe-area-inset-right)) calc(env(safe-area-inset-bottom) + 10px) max(18px,env(safe-area-inset-left))}
+
+/* header */
+.topline{display:flex;align-items:center;justify-content:space-between;gap:8px}
+h1{font-size:19px;font-weight:650;letter-spacing:-.3px;margin:0}
+.header-tools{display:flex;align-items:center;gap:10px}
+.credits{font-size:11px;color:var(--muted);white-space:nowrap}
+.theme-toggle{font-size:15px;line-height:1;color:var(--muted);padding:4px}.theme-toggle .theme-label{display:none}.theme-toggle:hover{color:var(--text)}
+.subtitle{font-size:11px;color:var(--muted);margin:3px 0 14px;overflow:hidden;white-space:nowrap;text-overflow:ellipsis}
+.actions{display:flex;gap:18px;margin-bottom:10px}
+.action{font-size:12px;color:var(--muted);padding:4px 0;border-bottom:1px solid transparent}
+.action:hover,.action.active{color:var(--text);border-bottom-color:var(--text)}.action.primary{color:var(--accent)}
+
+/* week switcher */
+.weeknav{display:flex;align-items:center;justify-content:space-between;gap:8px;margin-bottom:6px;padding:6px 0;border-top:1px solid var(--line)}
+.wk-btn{width:30px;height:30px;font-size:18px;line-height:1;color:var(--muted);border-radius:8px}
+.wk-btn:hover:not(:disabled){background:var(--hover);color:var(--text)}.wk-btn:disabled{opacity:.25;cursor:default}
+.wk-info{flex:1;min-width:0;text-align:center}
+.wk-info b{display:block;font-size:12px;font-weight:650}
+.wk-info small{display:block;font-size:10px;color:var(--muted);margin-top:1px;line-height:1.3}
+
+/* day tabs */
+.tabs{display:grid;grid-template-columns:repeat(5,1fr);margin-bottom:12px;border-bottom:1px solid var(--line)}
+.tab{padding:9px 0;font-size:12px;color:var(--muted);border-bottom:2px solid transparent;margin-bottom:-1px}
+.tab[aria-selected="true"]{color:var(--text);font-weight:650;border-bottom-color:var(--accent)}
+
+/* views */
+.view{flex:1;min-height:0;display:flex;flex-direction:column;overflow-y:auto;overscroll-behavior:contain;scrollbar-width:none}
+.view::-webkit-scrollbar{display:none}.view[hidden]{display:none!important}
+.view-heading{display:flex;justify-content:space-between;align-items:baseline;gap:8px;margin:0 0 4px;flex:none}
+.view-heading h2{font-size:13px;font-weight:650;margin:0}.view-heading small{font-size:10px;color:var(--muted)}
+.daycards{display:flex;flex-direction:column;flex:none}
+
+/* class cards */
+.slot{border-left:2px solid var(--theory);padding:8px 0 8px 12px;margin:6px 0;display:flex;flex-direction:column;gap:3px}
+.slot.lab{border-left-color:var(--lab)}.slot.thesis{border-left-color:var(--thesis)}
+.slothead,.slotmiddle,.slotbottom{display:flex;align-items:baseline;justify-content:space-between;gap:8px}
+.time{font-size:11px;color:var(--muted);font-variant-numeric:tabular-nums;white-space:nowrap}
+.slot-tag{font-size:9px;letter-spacing:1px;font-weight:700;color:var(--theory);white-space:nowrap}
+.slot.lab .slot-tag{color:var(--lab)}.slot.thesis .slot-tag{color:var(--thesis)}
+.course{font-size:15px;font-weight:600;line-height:1.25;letter-spacing:-.1px;min-width:0}
+.code{font-size:10px;color:var(--faint);white-space:nowrap}
+.slotbottom,.faculty{font-size:11px;color:var(--muted)}
+.breakrow{display:flex;justify-content:space-between;gap:8px;padding:8px 0;margin:6px 0;border-top:1px dashed var(--line);border-bottom:1px dashed var(--line);font-size:11px;color:var(--faint)}
+.warning,.cyclenote{font-size:11px;line-height:1.45;color:var(--muted);margin:0 0 8px;padding-left:12px;border-left:2px solid var(--line)}
+
+/* full week */
+.weekday{margin-bottom:14px}
+.weekday-title{display:flex;justify-content:space-between;align-items:baseline;font-size:12px;font-weight:650;margin:0 0 4px;padding-bottom:4px;border-bottom:1px solid var(--line)}
+.weekday-title small{color:var(--muted);font-size:10px;font-weight:400}
+.week-row{display:grid;grid-template-columns:78px minmax(0,1fr);gap:10px;padding:5px 0 5px 10px;margin:4px 0;border-left:2px solid var(--theory)}
+.week-row.lab{border-left-color:var(--lab)}.week-row.thesis{border-left-color:var(--thesis)}.week-row.break{border-left-color:var(--line)}
+.week-time{font-size:10.5px;color:var(--muted);line-height:1.4;font-variant-numeric:tabular-nums}
+.week-desc{font-size:12px;font-weight:600;line-height:1.3;overflow-wrap:anywhere}
+.week-desc small{display:block;font-size:10.5px;color:var(--muted);font-weight:400;margin-top:2px}
+.week-row.break .week-desc{font-weight:400;color:var(--faint)}
+
+/* courses & faculty */
+.group-head{font-size:10px;color:var(--muted);letter-spacing:1.2px;text-transform:uppercase;margin:16px 0 8px}
+.pair{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1fr);gap:14px;margin:0 0 12px}
+.dir-card{border-top:2px solid var(--theory);padding-top:7px;min-width:0}
+.dir-card.lab{border-top-color:var(--lab)}.dir-card.thesis{border-top-color:var(--thesis)}.dir-card.training{border-top-color:var(--accent)}.dir-card.only{grid-column:1/-1}
+.dir-type{font-size:9px;letter-spacing:1px;text-transform:uppercase;font-weight:700;color:var(--theory);margin-bottom:4px}
+.dir-card.lab .dir-type{color:var(--lab)}.dir-card.thesis .dir-type{color:var(--thesis)}.dir-card.training .dir-type{color:var(--accent)}
+.dir-title{font-weight:600;font-size:12px;line-height:1.3}
+.dir-meta{font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:3px;overflow-wrap:anywhere}.dir-meta strong{color:var(--text)}
+.session-list{font-size:11px;line-height:1.6}
+.fac-contact{display:flex;justify-content:space-between;gap:8px;padding:9px 0;border-bottom:1px solid var(--line)}
+.fac-contact div{min-width:0}.fac-contact strong{font-size:12px;font-weight:600}
+.fac-contact small{display:block;font-size:10.5px;color:var(--muted);line-height:1.4;margin-top:2px;overflow-wrap:anywhere}
+.fac-contact .initials{color:var(--faint);font-size:10px;white-space:nowrap}
+.muted-note{font-size:10.5px;color:var(--faint);line-height:1.5;margin:14px 0 18px}
+
+/* elective sheet */
+.sheet[hidden]{display:none!important}
+.sheet{position:fixed;inset:0;z-index:10;display:flex;align-items:flex-end;justify-content:center;background:var(--overlay)}
+.sheet-panel{width:min(100%,520px);max-height:90dvh;overflow-y:auto;background:var(--bg);border-top:1px solid var(--line);border-radius:18px 18px 0 0;padding:20px 18px calc(env(safe-area-inset-bottom) + 16px)}
+.sheet-top{display:flex;align-items:center;justify-content:space-between;gap:8px}.sheet h2{font-size:16px;font-weight:650;margin:0}
+.close{font-size:12px;color:var(--muted);padding:6px 4px}
+.sheet-desc{color:var(--muted);font-size:11.5px;line-height:1.5;margin:8px 0 14px}
+.fixed-elective{margin:12px 0;padding:10px 0;border-top:1px solid var(--line);border-bottom:1px solid var(--line)}
+.fixed-elective .fixed-caption{display:block;font-size:10px;color:var(--muted);margin-bottom:4px}
+.fixed-elective strong{font-size:13px}.fixed-elective small{font-size:10.5px;color:var(--muted);font-weight:400}
+.selgroup{display:block;margin:12px 0}.selgroup span{display:block;font-size:11px;font-weight:650;margin-bottom:6px}
+select{width:100%;min-height:42px;padding:9px 30px 9px 10px;border-radius:10px;border:1px solid var(--line);background:var(--bg);font-size:13px;text-overflow:ellipsis}
+.selhelp{color:var(--muted);font-size:10.5px;line-height:1.4;margin:6px 0 0}
+.sheet-summary{font-size:11.5px;line-height:1.5;color:var(--muted);margin:12px 0}
+.done{width:100%;background:var(--text);color:var(--bg);border-radius:10px;font-weight:650;font-size:13px;padding:12px}
+
+/* full week: landscape table */
+.app.view-week{max-width:none}.app.view-week .tabs{display:none}
+.rotate-hint{display:none;font-size:10px;color:var(--muted);margin:0 0 8px}
+.wk-scroll{overflow-x:auto;scrollbar-width:thin;-webkit-overflow-scrolling:touch}
+.wk-table{width:100%;min-width:760px;border-collapse:collapse;table-layout:fixed}
+.wk-table th,.wk-table td{border:1px solid var(--line);vertical-align:top}
+.wk-table thead th{font-size:11px;font-weight:650;padding:7px 4px;text-align:center}
+.wk-table .corner{width:78px}
+.wk-table tbody th{font-size:10px;font-weight:400;color:var(--muted);padding:7px 4px;text-align:center;white-space:nowrap;font-variant-numeric:tabular-nums}
+.wk-table tbody tr{height:62px}
+.wk-table td{position:relative;padding:6px 8px 6px 11px}
+.wk-table td::before{content:"";position:absolute;left:0;top:0;bottom:0;width:2px}
+.wk-table td.theory::before{background:var(--theory)}.wk-table td.lab::before{background:var(--lab)}.wk-table td.thesis::before{background:var(--thesis)}
+.cell+.cell{margin-top:6px}
+.cell-title{font-size:11.5px;font-weight:600;line-height:1.25}
+.cell-meta{font-size:10px;color:var(--muted);line-height:1.35;margin-top:2px}
+.wk-table tr.brk{height:auto}.wk-table tr.brk td{padding:6px 8px;text-align:center;font-size:10.5px;color:var(--faint);border-style:dashed}
+.wk-table tr.brk td::before{display:none}
+@media(orientation:portrait) and (max-width:700px){.app.view-week .rotate-hint{display:block}}
+@media(orientation:landscape) and (max-height:520px){.app{padding-top:calc(env(safe-area-inset-top) + 8px)}.app.view-week .subtitle{display:none}.app.view-week h1{font-size:16px}.app.view-week .actions{margin-bottom:2px}.app.view-week .weeknav{padding:3px 0;margin-bottom:4px}.wk-info small{display:none}.wk-table tbody tr{height:54px}.view-heading{margin-bottom:6px}}
+@media(max-width:355px){.app{padding-left:12px;padding-right:12px}.course{font-size:14px}.actions{gap:14px}}
+@media(min-width:600px){.app{border-left:1px solid var(--line);border-right:1px solid var(--line)}}
+@media(prefers-reduced-motion:reduce){*,*::before,*::after{scroll-behavior:auto!important;transition:none!important}}
+@media print{
+ :root,:root[data-theme="light"]{color-scheme:light}
+ html,body{height:auto;overflow:visible;background:#fff!important;color:#2a2926!important}
+ .app{height:auto;max-width:none;padding:0;display:block}
+ .actions,.weeknav,.tabs,.legend,.footer,.sheet,#dayView,#directoryView,.credits,.theme-toggle{display:none!important}
+ #weekView{display:block!important;overflow:visible!important}
+ .weekday{break-inside:avoid;page-break-inside:avoid}
+ .weekday-title,.week-desc,.week-time{color:#262522!important}
+ .week-row{background:#fff!important;border-color:#ccc!important;padding:5px 7px}
+ .week-desc small{color:#47443c!important}
+ .week-row.break{background:#f4eee1!important}
+ .subtitle{color:#555!important;white-space:normal}h1{color:#302b25!important}
+ @page{size:A4 landscape;margin:10mm}
+ .rotate-hint{display:none!important}.wk-scroll{overflow:visible!important}
+ .wk-table{min-width:0;width:100%;font-size:9pt}.wk-table tbody tr{height:auto}
+ .wk-table th,.wk-table td{border-color:#bbb!important;color:#262522!important;background:#fff!important}
+ .cell-meta{color:#47443c!important}
+ .wk-table td.theory::before{background:#688064!important}.wk-table td.lab::before{background:#5a8580!important}.wk-table td.thesis::before{background:#9a7157!important}
+}
+</style>
+</head>
+<body>
+<div class="app">
+ <header>
+  <div class="topline"><h1>Semester 7</h1><div class="header-tools"><span class="credits" id="totalCredits">22.50 credits</span><button type="button" class="theme-toggle" id="themeToggle" aria-label="Switch to light mode" aria-pressed="false"><span class="theme-symbol" aria-hidden="true">☀</span><span class="theme-label">Light</span></button></div></div>
+  <p class="subtitle" id="subtitle"></p>
+  <div class="actions">
+   <button type="button" class="action primary" id="editElectives">Elective</button>
+   <button type="button" class="action" id="showWeek" aria-pressed="false">Full week</button>
+   <button type="button" class="action" id="showDirectory" aria-pressed="false">Courses</button>
+  </div>
+  <div class="weeknav" id="weekNav"><button type="button" class="wk-btn" id="prevWk" aria-label="Previous week">‹</button><div class="wk-info" id="wkInfo" aria-live="polite"></div><button type="button" class="wk-btn" id="nextWk" aria-label="Next week">›</button></div>
+  <nav class="tabs" id="dayTabs" aria-label="Select weekday"></nav>
+ </header>
+ <section class="view" id="dayView" aria-live="polite">
+  <div class="view-heading"><h2 id="dayName"></h2><small id="dayMeta"></small></div>
+  <div id="dayWarning"></div>
+  <div class="daycards" id="dayCards"></div>
+ </section>
+ <section class="view scrolling" id="weekView" hidden>
+  <div class="view-heading"><h2>Full week</h2><small id="weekLabel"></small></div>
+  <div class="rotate-hint">Rotate your phone to landscape for the full table.</div>
+  <div id="weekWarning"></div>
+  <div id="weekRows"></div>
+  <button type="button" class="action" id="printBtn" style="margin:10px 0 16px">Print / save as PDF</button>
+ </section>
+ <section class="view scrolling" id="directoryView" hidden>
+  <div class="view-heading"><h2>Courses & faculty</h2><small>Paired theory + lab</small></div>
+  <div id="coursePairs"></div>
+  <div id="facultyList"></div>
+ </section>
+ </div>
+<div class="sheet" id="electiveSheet" hidden>
+ <div class="sheet-panel" role="dialog" aria-modal="true" aria-labelledby="sheetTitle">
+  <div class="sheet-top"><h2 id="sheetTitle">Choose your elective</h2><button class="close" id="closeSheet" type="button">✕ Close</button></div>
+  <p class="sheet-desc">Data Mining is your fixed Elective 7-I. Choose your Elective 7-II from the three subjects actually offered in your class timetable. All views update together.</p>
+  <div class="fixed-elective"><span class="fixed-caption">Elective 7-I · Fixed (3.00 credits)</span><strong>Data Mining <small>· CSE 4739</small></strong></div>
+  <label class="selgroup"><span>Elective 7-II · Choose one theory + lab (3.75 credits)</span><select id="electiveTwo"></select><div class="selhelp">Choose Digital Image Processing, Introduction to Cloud Computing, or Bioinformatics. Theory and lab sessions change together.</div></label>
+  <div class="sheet-summary" id="electiveSummary"></div>
+  <button type="button" class="done" id="saveSheet">Show my updated routine</button>
+ </div>
+</div>
+<script id="data" type="application/json">{"courses":{"HUM 4741":{"title":"Business Communication and Law","credits":2.0,"people":["KK"],"email":"khadija@iut-dhaka.edu"},"MATH 4741":{"title":"Mathematical Analysis","credits":3.0,"people":["MMA"],"email":"mma@iut-dhaka.edu"},"CSE 4703":{"title":"Theory of Computing","credits":3.0,"people":["AZM"],"email":"azam@iut-dhaka.edu"},"CSE 4711":{"title":"Artificial Intelligence","credits":3.0,"people":["MBH"],"email":"bakhtiarhasan@iut-dhaka.edu"},"CSE 4712":{"title":"Artificial Intelligence Lab","credits":0.75,"people":["ABM","MBH"],"email":"ashikiut@iut-dhaka.edu; bakhtiarhasan@iut-dhaka.edu","freq":"Alternate weeks · Sec 1A on Week A, Sec 1B on Week B"},"CSE 4700":{"title":"Project / Thesis","credits":3.0,"people":[],"email":""},"CSE 4790":{"title":"Industrial Training","credits":1.0,"people":["TMC"],"email":"tareque@iut-dhaka.edu"},"CSE 4739":{"title":"Data Mining","credits":3.0,"people":["MAMR"],"email":"almushabbir@iut-dhaka.edu"},"CSE 4733":{"title":"Digital Image Processing","credits":3.0,"people":["HK"],"email":"hasanul@iut-dhaka.edu"},"CSE 4734":{"title":"Digital Image Processing Lab","credits":0.75,"people":["HK","ASH"],"email":"hasanul@iut-dhaka.edu; asaduzzaman34@iut-dhaka.edu","freq":"Biweekly · lab on Week A only"},"CSE 4749":{"title":"Introduction to Cloud Computing","credits":3,"people":["NY"],"email":"njayou@iut-dhaka.edu"},"CSE 4750":{"title":"Introduction to Cloud Computing Lab","credits":0.75,"people":["NY","X1"],"email":"njayou@iut-dhaka.edu","freq":"Biweekly · lab on Week A only"},"CSE 4753":{"title":"Bioinformatics","credits":3,"people":["TMC"],"email":"tareque@iut-dhaka.edu"},"CSE 4754":{"title":"Bioinformatics Lab","credits":0.75,"people":["TMC","X1"],"email":"tareque@iut-dhaka.edu","freq":"Biweekly · lab on Week A only"}},"faculty":{"KK":{"name":"Khadija Khanom (BTM)","label":"KK (BTM)","email":"khadija@iut-dhaka.edu"},"MMA":{"name":"Prof. Dr. Muhammad Mahbub Alam","label":"MMA","email":"mma@iut-dhaka.edu"},"AZM":{"name":"Dr. Md. Azam Hossain","label":"AZM","email":"azam@iut-dhaka.edu","phone":"01706221136"},"MBH":{"name":"Md. Bakhtiar Hasan","label":"MBH","email":"bakhtiarhasan@iut-dhaka.edu"},"ABM":{"name":"Dr. A.B.M. Ashikur Rahman","label":"ABM","email":"ashikiut@iut-dhaka.edu"},"HK":{"name":"Prof. Dr. Md. Hasanul Kabir","label":"HK","email":"hasanul@iut-dhaka.edu"},"ASH":{"name":"Asaduzzaman Herok","label":"ASH","email":"asaduzzaman34@iut-dhaka.edu"},"MAMR":{"name":"Mueeze Al Mushabbir","label":"MAMR","email":"almushabbir@iut-dhaka.edu","phone":"01732923186"},"TMC":{"name":"Tareque Mohmud Chowdhury","label":"TMC","email":"tareque@iut-dhaka.edu","phone":"01309000256"},"NY":{"name":"Njayou Youssef","label":"NY","email":"njayou@iut-dhaka.edu"},"X1":{"name":"X1 (name not provided)","label":"X1","email":""}},"schedule":{"Monday":[{"code":"CSE 4750","start":"08:00","end":"10:30","room":"L-3","building":"AB2","teachers":["NY","X1"],"note":"Biweekly - Week A only","weeks":["A"]},{"code":"CSE 4711","start":"10:30","end":"11:45","room":"R-301","building":"AB2","teachers":["MBH"],"note":""},{"code":"CSE 4739","start":"11:45","end":"13:00","room":"R-301","building":"AB2","teachers":["MAMR"],"note":""},{"code":"HUM 4741","start":"14:30","end":"16:10","room":"R-510","building":"AB2","teachers":["KK"],"note":"100 minutes; end time inferred from the timetable"}],"Tuesday":[{"code":"CSE 4700","start":"08:00","end":"10:30","room":"Mobile Lab","building":"AB2","teachers":[],"note":"C7S1 / C7S2 thesis groups"},{"code":"CSE 4733","start":"10:30","end":"11:45","room":"R-510","building":"AB2","teachers":["HK"],"note":""},{"code":"CSE 4749","start":"10:30","end":"11:45","room":"L-5","building":"AB2","teachers":["NY"],"note":""},{"code":"CSE 4753","start":"10:30","end":"11:45","room":"R-508","building":"AB2","teachers":["TMC"],"note":""},{"code":"MATH 4741","start":"11:45","end":"13:00","room":"R-301","building":"AB2","teachers":["MMA"],"note":""},{"code":"CSE 4703","start":"14:30","end":"15:45","room":"R-106","building":"AB3","teachers":["AZM"],"note":""}],"Wednesday":[{"code":"CSE 4712","start":"08:00","end":"10:30","room":"L-2","building":"AB2","teachers":["ABM","MBH"],"note":"Sections 1A / 1B alternate weekly","cycle":{"A":"1A","B":"1B"}},{"code":"CSE 4734","start":"10:30","end":"13:00","room":"L-4","building":"AB2","teachers":["HK","ASH"],"note":"Biweekly - Week A only","weeks":["A"]},{"code":"CSE 4754","start":"10:30","end":"13:00","room":"L-6","building":"AB2","teachers":["TMC","X1"],"note":"Biweekly - Week A only","weeks":["A"]},{"code":"CSE 4700","start":"14:30","end":"17:00","room":"Mobile Lab","building":"AB2","teachers":[],"note":"C7S1 / C7S2 thesis groups"}],"Thursday":[{"code":"MATH 4741","start":"09:15","end":"10:30","room":"R-301","building":"AB2","teachers":["MMA"],"note":""},{"code":"CSE 4733","start":"10:30","end":"11:45","room":"R-510","building":"AB2","teachers":["HK"],"note":""},{"code":"CSE 4749","start":"10:30","end":"11:45","room":"L-4","building":"AB2","teachers":["NY"],"note":""},{"code":"CSE 4753","start":"10:30","end":"11:45","room":"L-5","building":"AB2","teachers":["TMC"],"note":""},{"code":"CSE 4703","start":"14:30","end":"15:45","room":"R-302","building":"AB2","teachers":["AZM"],"note":""}],"Friday":[{"code":"CSE 4711","start":"09:15","end":"10:30","room":"R-304","building":"AB2","teachers":["MBH"],"note":""},{"code":"CSE 4700","start":"10:30","end":"13:00","room":"Mobile Lab","building":"AB2","teachers":[],"note":"C7S1 / C7S2 thesis groups"},{"code":"CSE 4739","start":"14:30","end":"15:45","room":"R-304","building":"AB2","teachers":["MAMR"],"note":""}]},"choices":{"one":["CSE 4739"],"two":[["CSE 4733","CSE 4734"],["CSE 4749","CSE 4750"],["CSE 4753","CSE 4754"]]},"base":["HUM 4741","MATH 4741","CSE 4703","CSE 4711","CSE 4712","CSE 4700","CSE 4790"],"building":"AB2","anchor":"2026-10-26","others":[{"name":"Rifat Raiyan","phone":"01721886738","email":"rifatraiyan@iut-dhaka.edu"},{"name":"Sabrina Islam","phone":"01832239897","email":"sabrinaislam22@iut-dhaka.edu"},{"name":"Dr. Kamrul Hasan","phone":"01750616544","email":"hasank@iut-dhaka.edu"},{"name":"Mohammad Ishrak Abedin","phone":"01677169586","email":"ishrakabedin@iut-dhaka.edu"},{"name":"Md. Atiqur Rahman","phone":"01780420405","email":"atiqurrahman23@iut-dhaka.edu"}]}</script>
+<script>
+(()=>{'use strict';
+const d=JSON.parse(document.getElementById('data').textContent);
+const days=Object.keys(d.schedule),$=id=>document.getElementById(id);
+const themeKey='iut-cse7-theme-v4';
+function applyTheme(mode,save=true){
+ const light=mode==='light';document.documentElement.dataset.theme=light?'light':'dark';
+ const btn=$('themeToggle');btn.querySelector('.theme-symbol').textContent=light?'☾':'☀';
+ btn.querySelector('.theme-label').textContent=light?'Dark':'Light';
+ btn.setAttribute('aria-label',light?'Switch to dark mode':'Switch to light mode');
+ btn.setAttribute('aria-pressed',String(light));
+ $('themeColorMeta').setAttribute('content',light?'#faf7f2':'#1a1917');
+ if(save){try{localStorage.setItem(themeKey,light?'light':'dark')}catch(_){}}
+}
+$('themeToggle').addEventListener('click',()=>applyTheme(document.documentElement.dataset.theme==='light'?'dark':'light'));
+applyTheme(document.documentElement.dataset.theme||'dark',false);
+
+const short = code=>d.courses[code].title;
+const persisted=()=>{try{return JSON.parse(localStorage.getItem('iut-cse7-electives-v2')||'{}')}catch(_){return {}}};
+const saved=persisted();
+let e1='CSE 4739';
+let e2=d.choices.two.some(p=>p[0]===saved.two)?saved.two:'CSE 4733';
+let day='Monday',view='day';
+// Week A/B cycle: Week A starts on the anchor Monday (Oct 26, 2026); weeks then alternate A, B, A, B...
+const DAYMS=864e5,anchor=new Date(d.anchor+'T00:00:00'),clampWk=n=>Math.max(0,Math.min(25,n));
+const mondayOf=dt=>{const x=new Date(dt.getFullYear(),dt.getMonth(),dt.getDate()),w=x.getDay();x.setDate(x.getDate()+(w===0?1:w===6?2:1-w));return x};
+let wk=clampWk(Math.round((mondayOf(new Date())-anchor)/(7*DAYMS)));
+const wkType=n=>n%2===0?'A':'B';
+const wkRange=n=>{const a=new Date(anchor);a.setDate(a.getDate()+n*7);const b=new Date(a);b.setDate(b.getDate()+4);const f=x=>x.toLocaleDateString('en-US',{month:'short',day:'numeric'});return a.getMonth()===b.getMonth()?`${f(a)}–${b.getDate()}`:`${f(a)} – ${f(b)}`};
+const runsIn=(s,n)=>!s.weeks||s.weeks.includes(wkType(n));
+const nextRun=s=>{for(let i=wk;i<wk+4;i++)if(runsIn(s,i))return i;return wk};
+const fmt=n=>Number(n).toFixed(2),typeOf=code=>code==='CSE 4700'?'thesis':code==='CSE 4790'?'training':(code==='CSE 4712'||d.choices.two.some(p=>p[1]===code))?'lab':'theory';
+const time=t=>{const [h,m]=t.split(':').map(Number);return `${h%12||12}:${String(m).padStart(2,'0')}${h>=12?'p':'a'}`};
+const personName=id=>{const p=d.faculty[id];if(id==='KK')return 'Khadija Khanom (KK / BTM)';if(id==='X1')return 'X1 (full name not listed)';return p?p.name+(p.name.includes('('+p.label+')')?'':` (${p.label})`):id};
+const instructor=ids=>ids.length?ids.map(personName).join(' · '):'Faculty not specified';
+const teachersShort=ids=>ids.length?ids.map(x=>d.faculty[x]?d.faculty[x].label:x).join(' / '):'Not listed';
+const location=s=>`${s.room} · ${s.building}`;
+const getSelected=()=>[...d.base,e1,...d.choices.two.find(x=>x[0]===e2)];
+const visible=()=>{const set=new Set(getSelected());return Object.fromEntries(days.map(x=>[x,d.schedule[x].filter(s=>set.has(s.code)&&runsIn(s,wk)).map(s=>s.cycle?{...s,group:s.cycle[wkType(wk)]}:s)]))};
+const isUnscheduled=()=>getSelected().filter(k=>d.courses[k].unscheduled);
+const create=(tag,cls,txt)=>{const el=document.createElement(tag);if(cls)el.className=cls;if(txt!==undefined)el.textContent=txt;return el};
+const codeInfo=code=>d.courses[code];
+function cycleNotes(dayName){const set=new Set(getSelected()),out=[];
+ for(const dn of dayName?[dayName]:days)for(const s of d.schedule[dn]){if(!set.has(s.code)||runsIn(s,wk))continue;const n=nextRun(s);
+  out.push(`${dayName?'':dn.slice(0,3)+': '}No ${short(s.code)} (${s.code}) this week — next on Week ${wkType(n)} · ${wkRange(n)}.`)}
+ return out}
+function warning(parent,dayName){parent.replaceChildren();const unscheduled=isUnscheduled();if(unscheduled.length)parent.append(create('div','warning',`No times supplied for: ${unscheduled.map(k=>k+' '+short(k)).join(' / ')}. The routine shows verified slots only.`));for(const n of cycleNotes(dayName))parent.append(create('div','cyclenote',n))}
+function makeBreak(kind){
+ if(kind==='day'){const el=create('div','breakrow');el.append(create('span','','Lunch & prayer break'),create('span','','1:00–2:30 PM'));return el}
+ const row=create('div','week-row break');row.append(create('div','week-time','1:00–2:30 PM'),create('div','week-desc','Lunch & prayer break'));return row;
+}
+function mixedEvents(slots){const a=slots.map(s=>({...s}));a.push({break:true,start:'13:00',end:'14:30'});return a.sort((x,y)=>x.start.localeCompare(y.start));}
+function slotCard(s){
+ const typ=typeOf(s.code),c=codeInfo(s.code),card=create('article','slot '+typ);
+ const tagBase=typ==='lab'?'LAB':typ==='thesis'?'THESIS':'THEORY',tagText=s.group?`${tagBase} · SEC ${s.group}`:s.weeks?`${tagBase} · BIWEEKLY`:tagBase;const head=create('div','slothead');head.append(create('span','time',`${time(s.start)} – ${time(s.end)}`),create('span','slot-tag',tagText));
+ const middle=create('div','slotmiddle');middle.append(create('div','course',c.title),create('div','code',s.code));
+ const bottom=create('div','slotbottom');bottom.append(create('span','place',location(s)),create('span','faculty',s.teachers.length?teachersShort(s.teachers):''));
+ card.append(head,middle,bottom);
+ // Preserve context but do not force overflow in compact daily cards.
+ if(s.code==='CSE 4712')card.title='AI Lab sections 1A / 1B';
+ if(s.code==='CSE 4700')card.title='Project / Thesis — C7S1 / C7S2';
+ return card;
+}
+function renderDay(slots){
+ $('dayName').textContent=day;
+ $('dayMeta').textContent=`${slots[day].length} sessions · ${slots[day].filter(s=>typeOf(s.code)==='lab').length} labs`;
+ warning($('dayWarning'),day);
+ const target=$('dayCards');target.replaceChildren(...mixedEvents(slots[day]).map(s=>s.break?makeBreak('day'):slotCard(s)));
+ for(const el of $('dayTabs').children)el.setAttribute('aria-selected',String(el.dataset.day===day&&view==='day'));
+}
+// Full week as a table: rows = time bands, columns = days; labs/thesis span two bands.
+const bands=[['08:00','09:15'],['09:15','10:30'],['10:30','11:45'],['11:45','13:00'],null,['14:30','15:45'],['15:45','17:00']];
+function weekCell(s,bandEnd){
+ const c=codeInfo(s.code),el=create('div','cell');
+ el.append(create('div','cell-title',c.title));
+ if(s.end!==bandEnd)el.append(create('div','cell-meta',`${time(s.start)}–${time(s.end)}`));
+ const loc=s.building!==d.building?`${s.room} · ${s.building}`:s.room;
+ el.append(create('div','cell-meta',[s.code,loc,s.group?'Sec '+s.group:s.weeks?'biweekly':''].filter(Boolean).join(' · ')));
+ if(s.teachers.length)el.append(create('div','cell-meta',teachersShort(s.teachers)));
+ return el;
+}
+function renderWeek(slots){
+ warning($('weekWarning'));
+ $('weekLabel').textContent=`Week ${wkType(wk)} · ${wkRange(wk)} · ${Object.values(slots).flat().length} sessions`;
+ const tbl=create('table','wk-table'),hr=create('tr'),thead=create('thead'),body=create('tbody');
+ hr.append(create('th','corner'));for(const dn of days)hr.append(create('th','',dn.slice(0,3)));thead.append(hr);
+ const covered=Object.fromEntries(days.map(x=>[x,-1]));
+ bands.forEach((bd,i)=>{
+  const tr=create('tr');
+  if(!bd){tr.className='brk';tr.append(create('th','','1:00–2:30p'));const td=create('td','','Lunch & prayer break');td.colSpan=days.length;tr.append(td);body.append(tr);return}
+  tr.append(create('th','',`${time(bd[0])}–${time(bd[1])}`));
+  for(const dn of days){
+   if(i<=covered[dn])continue;
+   const here=slots[dn].filter(s=>s.start>=bd[0]&&s.start<bd[1]);
+   if(!here.length){tr.append(create('td','empty'));continue}
+   const span=Math.max(...here.map(s=>{let n=0;for(let j=i;j<bands.length;j++){const b=bands[j];if(!b||b[1]>s.end)break;n++}return Math.max(n,1)}));
+   covered[dn]=i+span-1;
+   const td=create('td',typeOf(here[0].code));td.rowSpan=span;
+   for(const s of here)td.append(weekCell(s,bands[i+span-1][1]));
+   tr.append(td);
+  }
+  body.append(tr);
+ });
+ tbl.append(thead,body);
+ const wrap=create('div','wk-scroll');wrap.append(tbl);$('weekRows').replaceChildren(wrap);
+}
+function contactRow(p,tag){
+ const r=create('div','fac-contact'),left=create('div'),right=create('div','initials',tag||'');
+ left.append(create('strong','',p.name));
+ if(p.email){const a=create('a','','✉ '+p.email);a.href='mailto:'+p.email;const small=create('small');small.append(a);left.append(small)}
+ if(p.phone){const a=create('a','','☎ '+p.phone);a.href='tel:+880'+p.phone.replace(/^0/,'');const small=create('small');small.append(a);left.append(small)}
+ r.append(left,right);return r;
+}
+function contactList(){
+ const ids=new Set(getSelected().flatMap(code=>d.courses[code].people));
+ const list=$('facultyList');list.append(create('div','group-head','Your faculty contacts'));
+ for(const id of ids){const p=d.faculty[id];if(p)list.append(contactRow(p,p.label))}
+ if(d.others&&d.others.length){list.append(create('div','group-head','Other faculty contacts'));for(const p of d.others)list.append(contactRow(p))}
+}
+function courseCard(code,forced){const c=codeInfo(code),type=forced||typeOf(code),card=create('div','dir-card '+type);
+ card.append(create('div','dir-type',type==='lab'?'Lab':type==='thesis'?'Project / Thesis':type==='training'?'Training':'Theory'));
+ card.append(create('div','dir-title',c.title));
+ card.append(create('div','dir-meta',`${code} · ${fmt(c.credits)} cr`));
+ card.append(create('div','dir-meta',c.people.length?`Faculty: ${teachersShort(c.people)}`:'Faculty: not specified'));
+ if(c.freq)card.append(create('div','dir-meta','↻ '+c.freq));
+ if(c.unscheduled)card.append(create('div','dir-meta','⚠ No timetable slots supplied'));
+ return card;}
+function pair(target,left,right){const row=create('div','pair');row.append(left);if(right)row.append(right);else left.classList.add('only');target.append(row)}
+function renderDirectory(){
+ const target=$('coursePairs');target.replaceChildren();
+ target.append(create('div','group-head','Courses grouped by theory & lab'));
+ const two=d.choices.two.find(p=>p[0]===e2);
+ pair(target,courseCard('CSE 4711'),courseCard('CSE 4712'));
+ pair(target,courseCard(two[0]),courseCard(two[1]));
+ pair(target,courseCard('HUM 4741'),courseCard('MATH 4741'));
+ pair(target,courseCard('CSE 4703'),courseCard(e1));
+ target.append(create('div','group-head','Project / thesis sessions'));
+ const th=courseCard('CSE 4700','thesis');const sessions=create('div','dir-card thesis');
+ sessions.append(create('div','dir-type','All thesis sessions'));
+ const times=create('div','session-list');
+ for(const dayName of ['Tuesday','Wednesday','Friday']){
+  const s=d.schedule[dayName].find(x=>x.code==='CSE 4700');times.append(create('div','',`${dayName.slice(0,3)} ${time(s.start)}–${time(s.end)}`));
+ }
+ times.append(create('div','', 'Mobile Lab · AB2'));sessions.append(times);pair(target,th,sessions);
+ target.append(create('div','group-head','Industrial training'));
+ pair(target,courseCard('CSE 4790'),null);
+ target.append(create('p','muted-note','The main building is AB2 as requested. The shared timetable explicitly labels R-106 as AB3, so that exception is preserved. HUM 4741 is a 100-minute class starting at 2:30 PM. “X1” has no full faculty name in the image. Only verified scheduled classes appear in the timetable. Weeks alternate A/B: Week A starts Monday, Oct 26, 2026 (AI Lab Sec 1A; your elective lab runs), then Week B (AI Lab Sec 1B; no elective lab), and so on.'));
+ const f=$('facultyList');f.replaceChildren();contactList();
+}
+function renderWeekNav(){
+ const sel=getSelected(),parts=[];
+ for(const dn of days)for(const s of d.schedule[dn]){if(!sel.includes(s.code)||!(s.cycle||s.weeks))continue;parts.push(s.cycle?`${s.code}: Sec ${s.cycle[wkType(wk)]}`:`${s.code}: ${runsIn(s,wk)?'lab':'no lab'}`)}
+ $('wkInfo').replaceChildren(create('b','',`Week ${wkType(wk)} · ${wkRange(wk)}`),create('small','',parts.join(' · ')));
+ $('prevWk').disabled=wk<=0;$('nextWk').disabled=wk>=25;
+}
+function recalc(){
+ const credits=getSelected().reduce((n,c)=>n+codeInfo(c).credits,0);
+ $('totalCredits').textContent=fmt(credits)+' credits';
+ $('subtitle').textContent=short(e1)+'  +  '+short(e2);
+ renderWeekNav();const slots=visible();renderDay(slots);renderWeek(slots);renderDirectory();
+}
+function setView(v){view=v;document.querySelector('.app').classList.toggle('view-week',v==='week');
+ $('dayView').hidden=v!=='day';$('weekView').hidden=v!=='week';$('directoryView').hidden=v!=='directory';
+ $('showWeek').classList.toggle('active',v==='week');$('showDirectory').classList.toggle('active',v==='directory');
+ $('showWeek').setAttribute('aria-pressed',String(v==='week'));$('showDirectory').setAttribute('aria-pressed',String(v==='directory'));
+ for(const el of $('dayTabs').children)el.setAttribute('aria-selected',String(el.dataset.day===day&&v==='day'));
+ if(v==='week')$('weekView').scrollTop=0;
+ if(v==='directory')$('directoryView').scrollTop=0;
+}
+for(const dname of days){const b=create('button','tab',dname.slice(0,3));b.type='button';b.dataset.day=dname;b.setAttribute('aria-selected','false');b.addEventListener('click',()=>{day=dname;setView('day');renderDay(visible())});$('dayTabs').append(b)}
+$('showWeek').addEventListener('click',()=>setView(view==='week'?'day':'week'));
+$('showDirectory').addEventListener('click',()=>setView(view==='directory'?'day':'directory'));
+$('printBtn').addEventListener('click',()=>window.print());
+$('prevWk').addEventListener('click',()=>{wk=clampWk(wk-1);recalc()});
+$('nextWk').addEventListener('click',()=>{wk=clampWk(wk+1);recalc()});
+function option(code){const c=codeInfo(code);const suffix=c.unscheduled?' · not on timetable':'';const opt=new Option(`${code} — ${c.title}${suffix}`,code);return opt}
+for(const pair of d.choices.two)$('electiveTwo').add(option(pair[0]));
+$('electiveTwo').value=e2;
+function summary(){const code=$('electiveTwo').value;
+ $('electiveSummary').textContent=`✓ Data Mining + ${short(code)}. Your day cards, full week and paired theory/lab directory will update together. The semester stays at 22.50 credits.`;
+}
+$('electiveTwo').addEventListener('change',summary);
+function sheet(open){$('electiveSheet').hidden=!open;document.body.style.overflow=open?'hidden':'';if(open){$('electiveTwo').value=e2;summary()}}
+$('editElectives').addEventListener('click',()=>sheet(true));
+$('closeSheet').addEventListener('click',()=>sheet(false));
+$('electiveSheet').addEventListener('click',ev=>{if(ev.target===$('electiveSheet'))sheet(false)});
+document.addEventListener('keydown',ev=>{if(ev.key==='Escape')sheet(false)});
+$('saveSheet').addEventListener('click',()=>{e2=$('electiveTwo').value;try{localStorage.setItem('iut-cse7-electives-v2',JSON.stringify({one:e1,two:e2}))}catch(_){/* file:// storage may be restricted */};sheet(false);recalc()});
+recalc();setView('day');
+})();
+</script>
+</body>
+</html>
